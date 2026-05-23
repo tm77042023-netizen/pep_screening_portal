@@ -1,0 +1,15 @@
+RewriteEngine On
+Options +ExecCGI
+AddHandler cgi-script .cgi
+
+# Force HTTPS while preserving the current host, including subdomains.
+RewriteCond %{HTTPS} !=on
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Serve real files directly.
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# Route everything else through the CGI app.
+RewriteRule ^app\.cgi$ - [L]
+RewriteRule ^.*$ /app.cgi [L]

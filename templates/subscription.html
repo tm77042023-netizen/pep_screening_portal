@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="hero-kicker">Billing and access</p>
+    <h1>Subscription</h1>
+    <p class="hint">Review your active plan, create renewal invoices, and track subscription payment references.</p>
+  </div>
+</section>
+<section class="dashboard-grid">
+  <div class="card">
+    <div class="section-head"><div><h3>Current Status</h3><p>Workspace subscription and plan access.</p></div></div>
+    <p><strong>Status:</strong> {{ current_user.subscription_status|title }}</p>
+    <p><strong>Plan:</strong> {{ active_plan.name }}</p>
+    <p><strong>Monthly fee:</strong> {{ format_bwp(active_plan.fee) }}</p>
+    {% if current_user.trial_ends_at %}<p><strong>Trial requested until:</strong> {{ current_user.trial_ends_at.strftime("%Y-%m-%d") }}</p>{% endif %}
+    <div class="login-info-box">
+      <strong>Access rule</strong>
+      <p>Subscription access is activated after payment confirmation or administrator approval. Outputs remain subject to human review and lawful-use obligations.</p>
+    </div>
+  </div>
+  <div class="card">
+    <div class="section-head"><div><h3>Create Renewal Invoice</h3><p>Generate a new invoice for the selected plan.</p></div></div>
+    <form method="post" class="stack-form">
+      <label>Plan
+        <select name="plan_code">
+          {% for code, plan in plans.items() %}
+            <option value="{{ code }}" {% if code == active_plan.code %}selected{% endif %}>{{ plan.name }} - {{ format_bwp(plan.fee) }}/month</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit">Create Subscription Invoice</button>
+    </form>
+  </div>
+</section>
+<section class="card">
+  <div class="section-head"><div><h3>Invoice History</h3><p>Use the exact payment reference when making payment.</p></div></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Date</th><th>Plan</th><th>Amount</th><th>Status</th><th>Reference</th><th>Valid Until</th></tr></thead>
+      <tbody>
+      {% for invoice in invoices %}
+        <tr>
+          <td>{{ invoice.created_at.strftime("%Y-%m-%d") }}</td>
+          <td>{{ invoice.plan_name }}</td>
+          <td>{{ format_bwp(invoice.amount) }}</td>
+          <td><span class="status-pill">{{ invoice.status|replace('_', ' ')|title }}</span></td>
+          <td>{{ invoice.payment_reference }}</td>
+          <td>{{ invoice.valid_until.strftime("%Y-%m-%d") if invoice.valid_until else "-" }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6">No subscription invoices recorded.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

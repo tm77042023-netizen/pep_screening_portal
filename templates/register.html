@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="login-shell">
+  <nav class="signup-nav">
+    <a href="{{ url_for('index') }}" class="login-page-brand"><span class="brand-mark">SR</span><strong>Softdayta Risk</strong></a>
+    <div><a href="{{ url_for('index') }}#pricing">Plans</a><a href="{{ url_for('index') }}#signin">Sign in</a></div>
+  </nav>
+  <section class="login-hero">
+    <div class="login-hero-content">
+      <div class="login-brand-pill"><span class="brand-mark">SR</span><strong>Workspace onboarding</strong></div>
+      <p class="login-eyebrow">Registration</p>
+      <h1>Register your compliance workspace and subscription plan.</h1>
+      <p class="login-hero-copy">Create the main organisation profile, select a plan, and generate a subscription invoice. Access activates after payment confirmation or administrator approval.</p>
+    </div>
+    <div class="login-plans">
+      <article class="login-plan">
+        <div class="login-plan-bar"></div>
+        <span class="pill">Selected plan</span>
+        <h3>{{ selected_plan.name }}</h3>
+        <div class="login-price"><strong>{{ format_bwp(selected_plan.fee) }}</strong><span>per month</span></div>
+        <p class="login-plan-discount">{{ selected_plan.summary }}</p>
+        <ul>
+          {% for feature in selected_plan.features %}
+            <li><span class="login-plan-dot"></span><span>{{ feature }}</span></li>
+          {% endfor %}
+        </ul>
+      </article>
+    </div>
+  </section>
+  <section class="login-auth-wrap">
+    <form method="post" class="login-card registration-card">
+      <input type="hidden" name="plan_code" value="{{ selected_plan.code }}">
+      <div class="login-auth-header">
+        <span class="brand-mark auth">RS</span>
+        <div>
+          <h2 class="login-auth-title">Workspace Registration</h2>
+          <p class="login-auth-subtitle">Main administrator and billing details</p>
+        </div>
+      </div>
+      <div class="form-grid registration-grid">
+        <label>Full name<input name="name" required value="{{ request.form.get('name', '') }}"></label>
+        <label>Email<input name="email" type="email" required value="{{ request.form.get('email', '') }}"></label>
+        <label>Password<input name="password" type="password" required></label>
+        <label>Phone<input name="phone" value="{{ request.form.get('phone', '') }}"></label>
+        <label>Organisation name<input name="organisation" required value="{{ request.form.get('organisation', '') }}"></label>
+        <label>Billing contact name<input name="billing_contact_name" value="{{ request.form.get('billing_contact_name', request.form.get('name', '')) }}"></label>
+        <label>Billing email<input name="billing_contact_email" type="email" value="{{ request.form.get('billing_contact_email', request.form.get('email', '')) }}"></label>
+        <label>Change plan
+          <select name="plan_code">
+            {% for code, plan in plans.items() %}
+              <option value="{{ code }}" {% if code == selected_plan.code %}selected{% endif %}>{{ plan.name }} - {{ format_bwp(plan.fee) }}/month</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="full inline-check"><input type="checkbox" name="trial_requested" value="1"> Request 14-day review/trial access while subscription is being confirmed.</label>
+        <label class="full inline-check"><input type="checkbox" required> I confirm this service will be used for lawful AML/CFT, due diligence, audit or compliance purposes and outputs will be human-reviewed before reliance.</label>
+        <div class="full"><button type="submit" class="login-submit">Register and View Subscription Invoice</button></div>
+      </div>
+      <div class="login-info-box">
+        <strong>What happens next?</strong>
+        <p>Registration creates a pending workspace and subscription invoice with a unique payment reference.</p>
+        <p>Your compliance team can be activated after payment confirmation or administrator approval.</p>
+      </div>
+    </form>
+  </section>
+</section>
+{% endblock %}

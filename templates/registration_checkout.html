@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="checkout-shell">
+  <div class="checkout-main">
+    <article class="checkout-card checkout-step-card">
+      <div class="checkout-step-icon">1</div>
+      <div>
+        <h1>Complete subscription payment to activate access</h1>
+        <p>Your workspace has been registered. Use the invoice reference exactly so the administrator can confirm the correct account.</p>
+      </div>
+    </article>
+    <article class="checkout-card">
+      <div class="checkout-card-head"><span class="checkout-icon-circle">INV</span><div><h2>Softdayta Risk subscription invoice</h2><p>Manual bank confirmation workflow</p></div></div>
+      <div class="checkout-form-grid">
+        <label>Billing contact<input value="{{ invoice.billing_contact_name or invoice.user.name }}" readonly></label>
+        <label>Billing email<input value="{{ invoice.billing_contact_email or invoice.user.email }}" readonly></label>
+        <label>Payment reference<input value="{{ invoice.payment_reference }}" readonly></label>
+        <label>Status<input value="{{ invoice.status|replace('_', ' ')|title }}" readonly></label>
+      </div>
+      <div class="checkout-bank-grid">
+        <div><span>Bank</span><strong>{{ bank_details.bank }}</strong></div>
+        <div><span>Account Name</span><strong>{{ bank_details.account_name }}</strong></div>
+        <div><span>Account Number</span><strong>{{ bank_details.account_number }}</strong></div>
+        <div><span>Branch</span><strong>{{ bank_details.branch }}</strong></div>
+      </div>
+      <div class="checkout-note-box">
+        <strong>Important payment reference</strong>
+        <p>Use <strong>{{ invoice.payment_reference }}</strong> as the payment reference. Access remains pending until payment is confirmed.</p>
+      </div>
+    </article>
+  </div>
+  <aside class="checkout-sidebar">
+    <article class="checkout-card checkout-summary-card">
+      <h2>Your plan</h2>
+      <div class="checkout-product">
+        <div class="checkout-product-mark">RS</div>
+        <div><strong>{{ invoice.plan_name }}</strong><p>{{ plan.summary }}</p></div>
+        <strong>{{ format_bwp(invoice.amount) }}/mo</strong>
+      </div>
+      <div class="checkout-summary-row total"><span>Total due now</span><strong>{{ format_bwp(invoice.amount) }}</strong></div>
+      <div class="checkout-terms">
+        <p>Send proof of payment to the administrator and quote <strong>{{ invoice.payment_reference }}</strong>. The app does not automatically activate pending accounts from this screen.</p>
+      </div>
+      <div class="checkout-actions">
+        <a class="button-link" href="{{ url_for('index') }}#signin">Sign in after activation</a>
+        <a class="button-link ghost" href="{{ url_for('register', plan=invoice.plan_code) }}">Register another workspace</a>
+      </div>
+    </article>
+  </aside>
+</section>
+{% endblock %}

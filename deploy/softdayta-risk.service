@@ -1,0 +1,22 @@
+[Unit]
+Description=Softdayta Risk (Gunicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/softdayta-risk/pep_screening_portal
+Environment="PYTHONDONTWRITEBYTECODE=1"
+Environment="SOFTDAYTA_RISK_DATA_DIR=/var/lib/softdayta-risk"
+# Set these in a secure env file or systemd drop-in:
+# Environment="SECRET_KEY=..."
+# Environment="PEP_DATABASE_URI=postgresql+psycopg://..."
+# Environment="SEED_DEMO_USERS=0"
+ExecStart=/opt/softdayta-risk/pep_screening_portal/.venv/bin/gunicorn --workers 3 --bind unix:/run/softdayta-risk/gunicorn.sock wsgi:app
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+

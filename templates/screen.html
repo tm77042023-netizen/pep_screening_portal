@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="hero-kicker">Manual Screening</p>
+    <h1>Screen typed names</h1>
+  </div>
+</section>
+<form method="post" class="card stack-form">
+  <label>Names to screen
+    <textarea name="names" rows="10" placeholder="Enter one name per line" required></textarea>
+  </label>
+  <button type="submit">Run Screening</button>
+</form>
+{% endblock %}

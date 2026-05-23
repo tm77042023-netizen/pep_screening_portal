@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="dashboard-hero">
+  <div>
+    <p class="hero-kicker">{{ current_user.organisation or "Subscriber workspace" }}</p>
+    <h1>PEP/PIP Screening Dashboard</h1>
+    <p>Screen individuals and organisations, review potential matches, and monitor confirmed subjects for PEP, sanctions, RCA and adverse-media risk.</p>
+  </div>
+  <div class="dashboard-actions">
+    <a class="button-link" href="{{ url_for('screen') }}">Screen individual</a>
+    <a class="button-link ghost" href="{{ url_for('bulk_upload') }}">Batch screening</a>
+    <a class="button-link ghost" href="#add-monitoring">Add monitored subject</a>
+  </div>
+</section>
+
+<section class="legal-notice-card app-notice">
+  <div>
+    <p class="hero-kicker">Compliance safeguard</p>
+    <h3>Human review is required before reliance.</h3>
+    <p>Screening, adverse-media and monitoring outputs are indicators for compliance review. They are not legal findings, sanctions determinations, credit decisions, employment decisions, or proof of wrongdoing.</p>
+  </div>
+</section>
+
+{% if current_user.is_admin %}
+<section class="config-strip">
+  <span class="config-chip {% if openai_adverse_media_enabled %}configured{% else %}attention{% endif %}">
+    Web search: {% if openai_adverse_media_enabled %}Configured{% else %}Not configured{% endif %}
+  </span>
+  {% if not openai_adverse_media_enabled %}
+    <small>Set OPENAI_API_KEY on the backend to enable live adverse-media intelligence.</small>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="dashboard-screen-card card subject-screen-panel">
+  <div>
+    <p class="hero-kicker">Primary action</p>
+    <h3>Screen a subject</h3>
+    <p>Search against adverse media, PEP/PIP, sanctions and internal database records. Review source evidence before reliance.</p>
+  </div>
+  <form method="post" action="{{ url_for('adverse_media_search') }}" class="quick-screen-form adverse-search-form">
+    <input name="name" placeholder="Full name / entity name" required>
+    <input name="jurisdiction" placeholder="Jurisdiction e.g. Botswana">
+    <input name="role" placeholder="Role / position">
+    <button type="submit">Search</button>
+  </form>
+</section>
+
+<section class="stats-grid risk-summary">
+  <article class="card stat risk-open">
+    <div class="metric-head"><span>Open alerts</span><b aria-hidden="true">A</b></div>
+    <strong>{{ risk_stats.open_alerts }}</strong>
+    <small>{{ risk_stats.pending_review }} pending review · {{ risk_stats.monitoring_changes }} monitoring</small>
+  </article>
+  <article class="card stat risk-high">
+    <div class="metric-head"><span>High risk</span><b aria-hidden="true">R</b></div>
+    <strong>{{ risk_stats.high_risk }}</strong>
+    <small>{% if risk_stats.high_risk %}Critical matches require escalation{% else %}No critical matches{% endif %}</small>
+  </article>
+  <article class="card stat risk-pending">
+    <div class="metric-head"><span>Pending review</span><b aria-hidden="true">P</b></div>
+    <strong>{{ risk_stats.pending_review }}</strong>
+    <small>Cases awaiting approve, dismiss or escalate</small>
+  </article>
+  <article class="card stat risk-monitoring">
+    <div class="metric-head"><span>Monitoring changes</span><b aria-hidden="true">M</b></div>
+    <strong>{{ risk_stats.monitoring_changes }}</strong>
+    <small>{% if risk_stats.monitoring_changes %}New changes need analyst review{% else %}No new changes{% endif %}</small>
+  </article>
+</section>
+
+<section class="card" id="adverse-media-alerts">
+  <div class="section-head">
+    <div><h3>Adverse Media Alerts</h3><p>Review possible matches, monitor subjects, and track screening outcomes. Alerts are not accusations and must be verified against source evidence.</p></div>
+  </div>
+  <div class="adverse-alert-grid">
+    {% for alert in adverse_alerts %}
+      <article class="adverse-alert-card">
+        <div class="adverse-alert-head">
+          <span class="risk-level-badge risk-{{ alert.risk_level|lower|replace(' ', '-') }}">{{ alert.risk_level }}</span>
+          <span class="decision-badge">{{ alert.review_status }}</span>
+        </div>
+        <h4>{{ alert.headline }}</h4>
+        <p>{{ alert.summary }}</p>
+        <div class="alert-theme-list">
+          {% for theme in alert.themes %}
+            <span>{{ theme }}</span>
+          {% endfor %}
+          <span>{{ alert.linkage_type }}</span>
+        </div>
+        <p class="hint">
+          Source:
+          {% if alert.source_url %}
+            <a href="{{ alert.source_url }}">{{ alert.source_name or "Public source" }}</a>
+          {% else %}
+            {{ alert.source_name or "Source pending" }}
+          {% endif %}
+          {% if alert.source_date %} &middot; {{ alert.source_date }}{% endif %}
+        </p>
+        <p class="hint"><strong>Recommended action:</strong> {{ alert.recommended_action }}</p>
+        <p class="alert-disclaimer">Review source before confirming. Dismiss false positives and avoid adverse decisions based only on automated output.</p>
+        <form method="post" action="{{ url_for('adverse_media_alert_action', alert_id=alert.id) }}" class="alert-actions">
+          <select name="action">
+            <option value="reviewed">Reviewed</option>
+            <option value="confirm">Confirm match</option>
+            <option value="dismiss">Dismiss as false positive</option>
+            <option value="escalate">Escalate</option>
+          </select>
+          <input name="reviewer_note" placeholder="Optional note">
+          <button type="submit" class="small">Save decision</button>
+        </form>
+      </article>
+    {% else %}
+      <article class="adverse-alert-card">
+        <div class="adverse-alert-head"><span class="risk-level-badge risk-unknown">No alerts yet</span></div>
+        <h4>No adverse-media searches saved</h4>
+        <p>Run a live adverse-media search above. Results will be saved here with source links, risk level, linkage type, and recommended action.</p>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="dashboard-grid dashboard-grid-primary">
+  <div class="card" id="review-queue">
+    <div class="section-head">
+      <div><h3>Review Queue</h3><p>Items requiring analyst decision.</p></div>
+      <a class="button-link compact-action" href="{{ url_for('screen') }}">+ New screening</a>
+    </div>
+    <div class="queue-filter-bar">
+      <select aria-label="Risk filter"><option>All risks</option><option>High</option><option>Medium</option><option>Low</option></select>
+      <select aria-label="Match type filter"><option>All match types</option><option>PEP/PIP</option><option>Adverse media</option><option>Sanctions</option></select>
+      <select aria-label="SLA filter"><option>SLA</option><option>Overdue</option><option>Due today</option><option>Upcoming</option></select>
+      <select aria-label="Sort"><option>Sort: Highest risk first</option><option>Newest first</option><option>Highest confidence first</option></select>
+    </div>
+    <div class="table-wrap">
+      <table class="dashboard-table">
+        <thead><tr><th>Subject</th><th>Matched record</th><th>Match type</th><th>Source</th><th>Risk</th><th>Confidence</th><th>SLA</th><th>Action</th></tr></thead>
+        <tbody>
+        {% for result in review_queue %}
+          {% set record = result.matched_record %}
+          {% set risk = screening_risk_level(result) %}
+          <tr>
+            <td><strong>{{ result.searched_name }}</strong></td>
+            <td>{% if record %}<strong>{{ record.full_name }}</strong><small>{{ record.position or "Position pending" }}</small>{% else %}-{% endif %}</td>
+            <td><span class="match-type-badge">{{ record.category if record else "Watchlist" }}</span></td>
+            <td>{{ record.source_name if record and record.source_name else "Database screening" }}</td>
+            <td><span class="risk-level-badge risk-{{ risk|lower }}">{{ risk }}</span></td>
+            <td>{{ result.match_score }}%</td>
+            <td><span class="status-pill">Due today</span></td>
+            <td><a class="table-action" href="{{ url_for('results', request_id=result.request_id) }}">Review</a></td>
+          </tr>
+        {% else %}
+          <tr><td colspan="8" class="empty-table-cell">No open review items. New potential matches will appear here.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" id="monitoring-alerts">
+    <div class="section-head"><div><h3>Monitoring Alerts</h3><p>Only monitored subjects with changes or unclear outcomes.</p></div></div>
+    <form method="post" action="{{ url_for('add_monitoring') }}" class="inline-form" id="add-monitoring">
+      <input name="name" placeholder="Enter name or entity to monitor" required>
+      <button type="submit" class="secondary">Add monitored subject</button>
+    </form>
+    <div class="table-wrap">
+      <table class="dashboard-table">
+        <thead><tr><th>Name</th><th>Status</th><th>Latest outcome</th><th>Risk</th><th>Frequency</th><th>Action</th></tr></thead>
+        <tbody>
+        {% for item in monitoring_alerts %}
+          {% set risk = monitoring_risk_level(item) %}
+          <tr>
+            <td><strong>{{ item.name }}</strong></td>
+            <td><span class="status-pill">Active monitoring</span></td>
+            <td>{{ monitoring_outcome_label(item.last_decision) }}</td>
+            <td><span class="risk-level-badge risk-{{ risk|lower }}">{{ risk }}</span></td>
+            <td>Daily</td>
+            <td><a class="action-links" href="{{ url_for('screen') }}">Review</a></td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="6" class="empty-table-cell">
+              <strong>No monitoring changes</strong>
+              <small>Subjects you monitor will appear here when new adverse media, PEP/PIP, or sanctions changes are detected.</small>
+              <a class="table-action" href="#add-monitoring">Add monitored subject</a>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="dashboard-grid">
+  <div class="card" id="recent-screenings">
+    <div class="section-head"><div><h3>Recent Possible Matches</h3><p>Only recent screening results with a possible database match are shown here.</p></div></div>
+    <div class="table-wrap">
+      <table class="dashboard-table">
+        <thead><tr><th>Date</th><th>Subject</th><th>Type</th><th>Match Status</th><th>Risk</th><th>Decision</th><th>Action</th></tr></thead>
+        <tbody>
+        {% for result in recent_results[:8] %}
+          {% set risk = screening_risk_level(result) %}
+          {% set decision = screening_decision_label(result) %}
+          <tr>
+            <td>{{ result.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+            <td><strong>{{ result.searched_name }}</strong>{% if result.matched_record %}<small>Database record: {{ result.matched_record.full_name }}</small>{% endif %}</td>
+            <td>{{ result.request.request_type|title }}</td>
+            <td><span class="badge {{ result.decision|lower|replace(' ', '-') }}">{{ result.decision }}</span></td>
+            <td><span class="risk-level-badge risk-{{ risk|lower }}">{{ risk }}</span></td>
+            <td><span class="decision-badge decision-{{ decision|lower|replace(' ', '-') }}">{{ decision }}</span></td>
+            <td><a class="table-action secondary" href="{{ url_for('results', request_id=result.request_id) }}">View</a></td>
+          </tr>
+        {% else %}
+          <tr><td colspan="7">No possible matches requiring review.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" id="batch-history">
+    <div class="section-head"><div><h3>Batch Upload History</h3><p>Recent bulk screening runs and report exports.</p></div></div>
+    <div class="table-wrap">
+      <table class="dashboard-table">
+        <thead><tr><th>Date</th><th>File</th><th>Subjects</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody>
+        {% for item in batch_requests %}
+          <tr>
+            <td>{{ item.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+            <td>{{ item.original_filename or "Manual batch" }}</td>
+            <td>{{ item.results|length if item.results|length else "No subjects" }}</td>
+            <td><span class="decision-badge decision-cleared">{{ item.status|title }}</span></td>
+            <td><a class="table-action secondary" href="{{ url_for('results', request_id=item.id) }}">Open report</a></td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5">No batch uploads yet.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

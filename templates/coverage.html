@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="hero-kicker">Tender readiness</p>
+    <h1>Verified Coverage Dashboard</h1>
+    <p>Coverage of Botswana and Namibia domestic PIP categories, source verification and RCA relationship records.</p>
+  </div>
+</section>
+
+<section class="stats-grid admin-stats">
+  <div class="stat"><span>Botswana</span><strong>{{ coverage.botswana_total }}</strong><small>Visible records</small></div>
+  <div class="stat"><span>Namibia</span><strong>{{ coverage.namibia_total }}</strong><small>Visible records</small></div>
+  <div class="stat success"><span>Verified</span><strong>{{ coverage.verified_records }}</strong><small>Source verified records</small></div>
+  <div class="stat emphasis"><span>Relationships</span><strong>{{ coverage.relationships }}</strong><small>Family/close associates</small></div>
+  <div class="stat success"><span>Tender score</span><strong>{{ coverage.tender_score_label }}</strong><small>{{ coverage.tender_score_percent }}% readiness</small></div>
+</section>
+
+<section class="card full-width-card">
+  <div class="section-head"><div><h3>Coverage by jurisdiction and category</h3><p>Summary view for tender submission and executive reporting.</p></div></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Jurisdiction</th><th>Category</th><th>Total</th><th>Current/confirmed</th><th>Source verified</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for row in coverage.rows %}
+          <tr>
+            <td>{{ row.jurisdiction }}</td>
+            <td>{{ row.category }}</td>
+            <td>{{ row.total }}</td>
+            <td>{{ row.current }}</td>
+            <td>{{ row.verified }}</td>
+            <td><span class="status-pill">{{ row.coverage_status }}</span></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

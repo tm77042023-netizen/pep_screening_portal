@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title or "Softdayta Risk" }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  {% if current_user %}
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-mark">SR</div>
+        <div>
+          <h1>Softdayta Risk</h1>
+          <p>PIP/PEP screening</p>
+        </div>
+      </div>
+      <a class="primary-action" href="{{ url_for('screen') }}">Screen individual</a>
+      <nav class="side-nav">
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('screen') }}">Screening</a>
+        <a href="{{ url_for('dashboard') }}#review-queue">Cases</a>
+        <a href="{{ url_for('dashboard') }}#monitoring-alerts">Monitoring</a>
+        {% if current_user.is_admin %}
+          <a href="{{ url_for('admin') }}">PEP/PIP Database</a>
+          <a href="{{ url_for('admin', tab='adverse_media') }}">Adverse Media</a>
+          <a href="{{ url_for('coverage_dashboard') }}">Coverage</a>
+          <a href="{{ url_for('compliance_pack') }}">Compliance Pack</a>
+          <a href="{{ url_for('developer_access') }}">Developer Access</a>
+        {% endif %}
+        <a href="{{ url_for('bulk_upload') }}">Batch Uploads</a>
+        <a href="{{ url_for('dashboard') }}#batch-history">Reports</a>
+        <a href="{{ url_for('subscription') }}">Subscription</a>
+        <a href="{{ url_for('profile') }}">Profile & Password</a>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="account-mini" id="account">
+          <span>{{ current_user.subscription_status|title }}</span>
+          <strong>{{ get_subscription_plan(current_user.plan_code).name }}</strong>
+        </div>
+        <a class="side-logout" href="{{ url_for('logout') }}">Logout</a>
+      </div>
+    </aside>
+    <section class="page-shell">
+      <header class="topbar">
+        <div class="topbar-main">
+          <div class="welcome-block">
+            <span>Workspace</span>
+            <strong>{{ current_user.organisation or current_user.name }}</strong>
+          </div>
+        </div>
+        <div class="topbar-side">
+          <span class="user-pill">{{ current_user.role }}</span>
+        </div>
+      </header>
+      <main class="page">
+  {% else %}
+  <main class="public-shell">
+  {% endif %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-stack">
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+  {% if current_user %}
+    </section>
+  </div>
+  {% endif %}
+</body>
+</html>

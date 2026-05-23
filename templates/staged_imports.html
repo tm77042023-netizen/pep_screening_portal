@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="hero-kicker">Administrator workspace</p>
+    <h1>Staged Import Runs</h1>
+    <p>Uploads are staged for review first. Apply only after confirming evidence and rejecting false positives.</p>
+  </div>
+  <a class="button-link secondary" href="{{ url_for('admin') }}">Back to admin</a>
+</section>
+
+<section class="card full-width-card">
+  <div class="section-head">
+    <div><h3>Recent runs</h3><p>Click a run to review staged records and relationships.</p></div>
+  </div>
+  <div class="table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr><th>ID</th><th>Source</th><th>Jurisdiction</th><th>Status</th><th>Created</th><th>Message</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        {% for run in runs %}
+        <tr>
+          <td><strong>#{{ run.id }}</strong></td>
+          <td>{{ run.source_name }}</td>
+          <td>{{ run.jurisdiction }}</td>
+          <td><span class="badge {{ run.status }}">{{ run.status|title }}</span></td>
+          <td>{{ run.created_at.strftime("%Y-%m-%d %H:%M") if run.created_at else "-" }}</td>
+          <td class="truncate-cell">{{ run.message or "-" }}</td>
+          <td><a class="table-action secondary" href="{{ url_for('staged_import_review', run_id=run.id) }}">Review</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7">No staged import runs yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+

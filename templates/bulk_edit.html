@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="hero-kicker">Administrator workspace</p>
+    <h1>Bulk Edit Database</h1>
+    <p>Edit PIP records, rejected records, and close-family / associate relationship candidates in an Excel-like grid.</p>
+  </div>
+  <a class="button-link secondary" href="{{ url_for('admin') }}">Back to database</a>
+</section>
+
+<form method="post" class="bulk-edit-form">
+  <section class="card full-width-card">
+    <div class="section-head">
+      <div>
+        <h3>PIP records, including rejected review</h3>
+        <p>Rejected rows are included so the admin can approve valid PIPs back into candidate review, confirmed, current, or former status.</p>
+      </div>
+      <button type="submit">Save all changes</button>
+    </div>
+    <div class="table-wrap bulk-grid-wrap">
+      <table class="bulk-grid">
+        <thead>
+          <tr>
+            <th>Name</th><th>Category</th><th>Position</th><th>Jurisdiction</th><th>Status</th><th>Verification</th><th>Reliability</th><th>Adverse Media</th><th>Source</th><th>Source URL</th><th>Evidence excerpt</th><th>Last Verified</th><th>Next Review</th><th>Reviewer Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for record in records %}
+          <tr>
+            <td><input type="hidden" name="record_id" value="{{ record.id }}"><input name="record_{{ record.id }}_full_name" value="{{ record.full_name }}"></td>
+            <td><input name="record_{{ record.id }}_category" value="{{ record.category }}"></td>
+            <td><input name="record_{{ record.id }}_position" value="{{ record.position or '' }}"></td>
+            <td><input name="record_{{ record.id }}_jurisdiction" value="{{ record.jurisdiction }}"></td>
+            <td>
+              <select name="record_{{ record.id }}_status">
+                {% for option in filter_options.statuses %}
+                  <option value="{{ option }}" {% if record.status == option %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td>
+              <select name="record_{{ record.id }}_verification_status">
+                {% for option in filter_options.verification_statuses %}
+                  <option value="{{ option }}" {% if (record.verification_status or 'Unverified') == option %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td>
+              <select name="record_{{ record.id }}_source_reliability">
+                {% for option in filter_options.source_reliability %}
+                  <option value="{{ option }}" {% if (record.source_reliability or 'Unknown') == option %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td>
+              <select name="record_{{ record.id }}_adverse_media_status">
+                {% for option in filter_options.adverse_media %}
+                  <option value="{{ option }}" {% if (record.adverse_media_status or 'Pending review') == option %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td><input name="record_{{ record.id }}_source_name" value="{{ record.source_name or '' }}"></td>
+            <td><input name="record_{{ record.id }}_source_url" value="{{ record.source_url or '' }}"></td>
+            <td><textarea name="record_{{ record.id }}_source_excerpt">{{ record.source_excerpt or '' }}</textarea></td>
+            <td><input name="record_{{ record.id }}_last_verified_date" value="{{ record.last_verified_date or '' }}" placeholder="YYYY-MM-DD"></td>
+            <td><input name="record_{{ record.id }}_next_review_due" value="{{ record.next_review_due or '' }}" placeholder="YYYY-MM-DD"></td>
+            <td><textarea name="record_{{ record.id }}_reviewer_notes">{{ record.reviewer_notes or '' }}</textarea></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="14">No PIP records available for bulk editing.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card full-width-card">
+    <div class="section-head">
+      <div>
+        <h3>Close family and associate relationship records</h3>
+        <p>Approve candidate relationships by changing review status to Confirmed, or reject unsupported links.</p>
+      </div>
+      <button type="submit">Save all changes</button>
+    </div>
+    <div class="table-wrap bulk-grid-wrap">
+      <table class="bulk-grid">
+        <thead>
+          <tr><th>Principal PIP</th><th>Related party</th><th>Relationship type</th><th>Category</th><th>Jurisdiction</th><th>Confidence</th><th>Review status</th><th>Source</th><th>Source URL</th><th>Evidence excerpt</th><th>Reviewer notes</th></tr>
+        </thead>
+        <tbody>
+          {% for item in relationships %}
+          <tr>
+            <td><input type="hidden" name="relationship_id" value="{{ item.id }}"><strong>{{ item.principal.full_name if item.principal else '-' }}</strong></td>
+            <td><input name="relationship_{{ item.id }}_related_name" value="{{ item.related_name }}"></td>
+            <td><input name="relationship_{{ item.id }}_relationship_type" value="{{ item.relationship_type }}"></td>
+            <td><input name="relationship_{{ item.id }}_category" value="{{ item.category or 'Related party' }}"></td>
+            <td><input name="relationship_{{ item.id }}_jurisdiction" value="{{ item.jurisdiction or '' }}"></td>
+            <td><input name="relationship_{{ item.id }}_confidence_score" type="number" min="0" max="100" value="{{ item.confidence_score }}"></td>
+            <td>
+              <select name="relationship_{{ item.id }}_review_status">
+                {% for option in filter_options.relationship_statuses %}
+                  <option value="{{ option }}" {% if item.review_status == option %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td><input name="relationship_{{ item.id }}_source_name" value="{{ item.source_name or '' }}"></td>
+            <td><input name="relationship_{{ item.id }}_source_url" value="{{ item.source_url or '' }}"></td>
+            <td><textarea name="relationship_{{ item.id }}_source_excerpt">{{ item.source_excerpt or '' }}</textarea></td>
+            <td><textarea name="relationship_{{ item.id }}_reviewer_notes">{{ item.reviewer_notes or '' }}</textarea></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="11">No family/close-associate relationship records available for bulk editing.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</form>
+{% endblock %}

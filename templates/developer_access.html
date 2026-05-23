@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="hero-kicker">Developer access</p>
+    <h2>API integration and platform readiness</h2>
+    <p>Benchmarked from the Creditintel developer workflow: keep technical access controlled, show endpoint guidance, and expose health signals without publishing admin credentials.</p>
+  </div>
+</section>
+
+{% if new_api_key %}
+<section class="developer-token-card">
+  <div>
+    <p class="hero-kicker">One-time API key</p>
+    <h3>{{ new_api_key_name or "New integration key" }}</h3>
+    <p>Copy this value now. For safety, the full key is not stored in plain text and will not be displayed again.</p>
+  </div>
+  <code>{{ new_api_key }}</code>
+</section>
+{% endif %}
+
+<section class="stats-grid developer-stats">
+  <article class="stat"><span>Total records</span><strong>{{ stats.records }}</strong></article>
+  <article class="stat"><span>Candidate review</span><strong>{{ stats.candidates }}</strong></article>
+  <article class="stat"><span>Pending adverse alerts</span><strong>{{ stats.adverse_alerts }}</strong></article>
+  <article class="stat"><span>Active API keys</span><strong>{{ stats.active_keys }}</strong></article>
+  <article class="stat"><span>OpenAI web search</span><strong>{{ stats.openai }}</strong></article>
+</section>
+
+<section class="card full-width-card" style="margin-top:1.2rem;">
+  <div class="section-head">
+    <div>
+      <p class="hero-kicker">Subscribers</p>
+      <h3>Workspace subscription status</h3>
+      <p>Benchmark view aligned to the Creditintel Developer Dashboard: confirm subscription access, plan selection and latest invoice trail.</p>
+    </div>
+    <div class="pill-row">
+      <span class="pill">Total {{ subscriber_summary.total }}</span>
+      <span class="pill success">Active {{ subscriber_summary.active }}</span>
+      <span class="pill warning">Pending {{ subscriber_summary.pending }}</span>
+      <span class="pill">Trials {{ subscriber_summary.trial }}</span>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Plan</th>
+          <th>Trial ends</th>
+          <th>Latest invoice</th>
+          <th>Invoice status</th>
+          <th>Created</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in subscriber_rows %}
+        {% set sub = row.user %}
+        {% set plan = row.plan %}
+        {% set inv = row.latest_invoice %}
+        <tr>
+          <td>
+            <strong>{{ sub.name or sub.email }}</strong>
+            <small>{{ sub.email }}</small>
+          </td>
+          <td>{{ sub.role }}</td>
+          <td><span class="badge {{ sub.subscription_status }}">{{ sub.subscription_status|title }}</span></td>
+          <td>{{ plan.name }}</td>
+          <td>{{ sub.trial_ends_at.strftime("%Y-%m-%d") if sub.trial_ends_at else "-" }}</td>
+          <td>{{ inv.payment_reference if inv else "-" }}</td>
+          <td>{{ inv.status|title if inv else "-" }}</td>
+          <td>{{ sub.created_at.strftime("%Y-%m-%d") if sub.created_at else "-" }}</td>
+          <td>
+            {% if sub.subscription_status != "active" %}
+            <form method="post" class="inline-form" style="gap:0.4rem; flex-wrap:wrap;">
+              <input type="hidden" name="action" value="activate_subscription">
+              <input type="hidden" name="user_id" value="{{ sub.id }}">
+              <select name="plan_code" style="min-width:9rem;">
+                {% for code, p in subscription_plans.items() %}
+                  <option value="{{ code }}" {% if sub.plan_code == code %}selected{% endif %}>{{ p.name }}</option>
+                {% endfor %}
+              </select>
+              <label class="inline-check" style="margin:0;"><input type="checkbox" name="clear_trial" value="1"> Clear trial</label>
+              <button type="submit" class="button-link">Activate</button>
+            </form>
+            {% else %}
+            <form method="post" class="inline-form">
+              <input type="hidden" name="action" value="deactivate_subscription">
+              <input type="hidden" name="user_id" value="{{ sub.id }}">
+              <button type="submit" class="button-link danger">Set pending</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9">No users found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="developer-grid">
+  <article class="admin-card">
+    <div class="section-head">
+      <div>
+        <p class="hero-kicker">Organisation API keys</p>
+        <h3>Issue backend-only credentials</h3>
+        <p>Use these keys from trusted organisation systems only. Never place them in public HTML, JavaScript, or mobile app bundles.</p>
+      </div>
+    </div>
+    <form method="post" class="developer-key-form">
+      <input type="hidden" name="action" value="create_api_key">
+      <label>Key name
+        <input name="name" placeholder="CRM onboarding integration">
+      </label>
+      <button type="submit">Create API key</button>
+    </form>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Prefix</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th>Last used</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for key in api_keys %}
+          <tr>
+            <td>{{ key.name }}</td>
+            <td><code>{{ key.key_prefix }}...</code></td>
+            <td><span class="badge {{ key.status }}">{{ key.status|title }}</span></td>
+            <td>{{ key.created_at.strftime("%Y-%m-%d") if key.created_at else "-" }}</td>
+            <td>{{ key.last_used_at.strftime("%Y-%m-%d %H:%M") if key.last_used_at else "Not used" }}</td>
+            <td>
+              {% if key.status == "active" %}
+              <form method="post">
+                <input type="hidden" name="action" value="revoke_api_key">
+                <input type="hidden" name="key_id" value="{{ key.id }}">
+                <button type="submit" class="button-link danger">Revoke</button>
+              </form>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6">No developer API keys created yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <article class="admin-card">
+    <div class="section-head">
+      <div>
+        <p class="hero-kicker">Integration guide</p>
+        <h3>Available endpoints</h3>
+      </div>
+    </div>
+    <div class="endpoint-list">
+      {% for endpoint in endpoints %}
+      <div class="endpoint-card">
+        <div><span>{{ endpoint.method }}</span><strong>{{ endpoint.path }}</strong></div>
+        <p>{{ endpoint.purpose }}</p>
+        <code>{{ endpoint.body }}</code>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="developer-code-block">
+<pre>curl -X POST {{ request.host_url.rstrip("/") }}/api/adverse-media/search \
+  -H "Authorization: Bearer rsk_live_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Duma Boko","jurisdiction":"Botswana","role":"President"}'</pre>
+    </div>
+    <p class="preview-disclaimer">API responses are decision-support outputs. Client systems should store the source URL, linkage type, reviewer decision, and audit timestamp before operational reliance.</p>
+  </article>
+</section>
+{% endblock %}

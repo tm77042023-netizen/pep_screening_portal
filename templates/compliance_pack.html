@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="hero-kicker">Tender evidence</p>
+    <h1>Compliance Pack</h1>
+    <p>Formal compliance, data-protection, sourcing, retention, security and reliance statements for proposal support.</p>
+  </div>
+  <div class="actions">
+    <a class="button-link secondary" href="{{ url_for('compliance_pack_download') }}">Download compliance pack</a>
+    <a class="button-link secondary" href="{{ url_for('commercial_pack_download') }}">Download SLA/commercial pack</a>
+  </div>
+</section>
+
+<section class="dashboard-grid">
+  {% for section in sections %}
+    <article class="card">
+      <p class="hero-kicker">{{ section.key|replace('-', ' ') }}</p>
+      <h3>{{ section.title }}</h3>
+      <p>{{ section.summary }}</p>
+      <div class="section-head compact"><div><h3>Evidence maintained</h3></div></div>
+      <ul>
+        {% for item in section.evidence %}
+          <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+    </article>
+  {% endfor %}
+</section>
+{% endblock %}

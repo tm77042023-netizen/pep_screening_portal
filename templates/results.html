@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="hero-kicker">Request #{{ screening.id }}</p>
+    <h1>Screening results</h1>
+  </div>
+  <div class="actions">
+    <a class="button-link secondary" href="{{ url_for('download_risk_research_report', request_id=screening.id) }}">Download risk research report (Excel)</a>
+  </div>
+</section>
+<div class="card">
+  <table>
+    <thead>
+      <tr><th>Searched name</th><th>Decision</th><th>Score</th><th>Database record</th><th>Position</th><th>Source</th></tr>
+    </thead>
+    <tbody>
+      {% for result in screening.results %}
+      <tr>
+        <td>{{ result.searched_name }}</td>
+        <td><span class="badge {{ result.decision|lower|replace(' ', '-') }}">{{ result.decision }}</span></td>
+        <td>{{ result.match_score }}%</td>
+        <td>{{ result.matched_record.full_name if result.matched_record else "-" }}</td>
+        <td>{{ result.matched_record.position if result.matched_record else "-" }}</td>
+        <td>
+          {% if result.matched_record and result.matched_record.source_url %}
+            <a href="{{ result.matched_record.source_url }}">Source</a>
+          {% else %}-{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% for result in screening.results %}
+  {% if result.matched_record and result.matched_record.profile_summary %}
+    <div class="card profile-card">
+      {% if result.matched_record.profile_image_url %}
+        <img class="profile-photo" src="{{ result.matched_record.profile_image_url }}" alt="{{ result.matched_record.full_name }}">
+      {% endif %}
+      <div>
+        <p class="hero-kicker">Public profile summary</p>
+        <h3>{{ result.matched_record.full_name }}</h3>
+        <p>{{ result.matched_record.profile_summary }}</p>
+        <p class="hint">
+          Source:
+          {% if result.matched_record.profile_source_url %}
+            <a href="{{ result.matched_record.profile_source_url }}">{{ result.matched_record.profile_source_name or "Public source" }}</a>
+          {% else %}
+            {{ result.matched_record.profile_source_name or "Public source" }}
+          {% endif %}
+        </p>
+      </div>
+    </div>
+  {% endif %}
+{% endfor %}
+{% endblock %}

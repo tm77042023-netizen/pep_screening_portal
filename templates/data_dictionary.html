@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="hero-kicker">Integration evidence</p>
+    <h1>Data Dictionary and Sample Feed</h1>
+    <p>Machine-readable field definitions for API, CSV and Excel feeds.</p>
+  </div>
+  <div class="actions">
+    <a class="button-link secondary" href="{{ url_for('api_feed_records', format='json') }}">JSON sample</a>
+    <a class="button-link secondary" href="{{ url_for('api_feed_records', format='csv') }}">CSV sample</a>
+    <a class="button-link secondary" href="{{ url_for('api_feed_records', format='xlsx') }}">Excel sample</a>
+  </div>
+</section>
+
+<section class="card full-width-card">
+  <div class="section-head"><div><h3>Field definitions</h3><p>Use this table in tender submissions and integration documentation.</p></div></div>
+  <table>
+    <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+    <tbody>
+      {% for field, data_type, description in data_dictionary %}
+        <tr><td><code>{{ field }}</code></td><td>{{ data_type }}</td><td>{{ description }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card full-width-card">
+  <div class="section-head"><div><h3>Sample JSON structure</h3><p>Change-only feeds can be requested with <code>?since=YYYY-MM-DDTHH:MM:SS</code>.</p></div></div>
+  <pre class="developer-code-block">{{ sample_records|tojson(indent=2) }}</pre>
+</section>
+{% endblock %}

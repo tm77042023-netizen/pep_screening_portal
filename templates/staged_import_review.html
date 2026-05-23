@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="hero-kicker">Staged import run</p>
+    <h1>Review run #{{ run.id }}</h1>
+    <p class="hint">{{ run.message or "" }}</p>
+  </div>
+  <div class="actions">
+    <a class="button-link secondary" href="{{ url_for('staged_imports') }}">Back to runs</a>
+    <a class="button-link secondary" href="{{ url_for('admin') }}">Back to admin</a>
+  </div>
+</section>
+
+<section class="card full-width-card">
+  <div class="section-head">
+    <div>
+      <h3>Staged rows</h3>
+      <p>Select rows, approve or reject, then apply approved rows into the live PIP database.</p>
+    </div>
+    <div class="actions" style="display:flex; gap:0.6rem; flex-wrap:wrap; align-items:center;">
+      <form method="post" class="inline-form">
+        <button type="submit" class="button-link secondary" name="action" value="run_adverse_media">Run adverse media on approved</button>
+      </form>
+      <form method="post" class="inline-form">
+        <button type="submit" class="button-link" name="action" value="apply">Apply approved</button>
+      </form>
+    </div>
+  </div>
+
+  <form method="post" class="stack-form">
+    <div class="actions" style="display:flex; gap:0.6rem; flex-wrap:wrap; align-items:center;">
+      <button type="submit" class="button-link" name="action" value="approve">Approve selected</button>
+      <button type="submit" class="button-link danger" name="action" value="reject">Reject selected</button>
+      <input name="reviewer_note" placeholder="Optional reviewer note (applies to selected rows)">
+    </div>
+
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th></th><th>Kind</th><th>Name / Related</th><th>Category / Type</th><th>Position</th><th>Confidence</th><th>Status</th><th>Evidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in candidates %}
+          <tr>
+            <td><input type="checkbox" name="candidate_id" value="{{ row.id }}"></td>
+            <td>{{ row.kind }}</td>
+            <td>
+              {% if row.kind == "pip" %}
+                <strong>{{ row.full_name }}</strong>
+              {% elif row.kind == "registry" %}
+                <strong>{{ row.full_name }}</strong><br><small>Registry entity</small>
+              {% else %}
+                <strong>{{ row.related_name }}</strong><br><small>Principal record id: {{ row.principal_record_id or "-" }}</small>
+              {% endif %}
+            </td>
+            <td>
+              {% if row.kind == "pip" %}
+                {{ row.category or "-" }}
+              {% elif row.kind == "registry" %}
+                {{ row.category or "Registry" }}
+              {% else %}
+                {{ row.relationship_type or "-" }}
+              {% endif %}
+            </td>
+            <td>{{ row.position or "-" }}</td>
+            <td>{{ row.confidence_score or 0 }}%</td>
+            <td><span class="badge {{ row.review_status|lower|replace(' ', '-') }}">{{ row.review_status }}</span></td>
+            <td class="truncate-cell">{{ row.snippet or "-" }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="8">No staged rows found for this run.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="login-shell">
+  <section class="login-hero">
+    <div class="login-hero-content">
+      <div class="login-brand-pill">
+        <span class="brand-mark">SR</span>
+        <strong>Softdayta Risk</strong>
+      </div>
+      <p class="login-eyebrow">Compliance workspace</p>
+      <h1>Screen names and monitor PEP/PIP risk from one controlled workspace.</h1>
+      <p class="login-hero-copy">Reduce false positives with evidence-backed PEP/PIP screening, adverse-media review, watchlist monitoring, and an auditable candidate-to-confirmed workflow.</p>
+      <div class="hero-cta-row">
+        <a href="#public-preview" class="primary-action hero-action">Try public preview</a>
+        <a href="{{ url_for('register') }}" class="button-link ghost hero-ghost">Register workspace</a>
+      </div>
+    </div>
+    <div class="login-plans">
+      <article class="login-plan">
+        <div class="login-plan-bar"></div>
+        <h3>Subscriber features</h3>
+        <ul>
+          <li><span class="login-plan-dot"></span><span>Individual and batch screening.</span></li>
+          <li><span class="login-plan-dot"></span><span>Adverse-media alert review.</span></li>
+          <li><span class="login-plan-dot"></span><span>Exportable evidence reports.</span></li>
+        </ul>
+      </article>
+      <article class="login-plan">
+        <div class="login-plan-bar"></div>
+        <h3>API integration</h3>
+        <ul>
+          <li><span class="login-plan-dot"></span><span>Connect screening to onboarding and CRM systems.</span></li>
+          <li><span class="login-plan-dot"></span><span>Push watchlist alerts into case-management tools.</span></li>
+          <li><span class="login-plan-dot"></span><span>Use structured JSON for audit-ready workflows.</span></li>
+        </ul>
+      </article>
+    </div>
+  </section>
+  <section class="trust-strip">
+    <span>AML/CFT aligned</span>
+    <span>GDPR-aware workflows</span>
+    <span>Source evidence retained</span>
+    <span>Analyst review before confirmation</span>
+  </section>
+  <section class="legal-notice-card">
+    <div>
+      <p class="hero-kicker">Responsible use notice</p>
+      <h3>Screening results are decision-support, not findings of wrongdoing.</h3>
+      <p>Softdayta Risk uses public-source records, user-supplied data and AI-assisted summaries to help compliance teams identify items for review. Public preview results may be incomplete and must not be used to deny services, accuse any person, or make legal/commercial decisions without human verification and source review.</p>
+    </div>
+  </section>
+  <section class="landing-section current-affairs-section">
+    <div class="section-head">
+      <div>
+        <p class="hero-kicker">Live adverse-media intelligence</p>
+        <h3>Source-backed risk alerts for review</h3>
+        <p>Run web-backed adverse-media searches from the dashboard. The system saves cautious summaries, linkage type, sources, and recommended analyst actions for human review.</p>
+      </div>
+    </div>
+    <div class="current-affairs-grid">
+      {% for insight in adverse_insights %}
+        <article class="current-affairs-card">
+          <div>
+            <span class="issue-chip">{{ insight.overall_risk_level }} &middot; {{ insight.pip_status or "Unknown PIP status" }}</span>
+            <h4>{{ insight.searched_name }}</h4>
+            <p>{{ insight.overall_summary or "Adverse-media result saved for analyst review. No automated conclusion should be drawn without checking the source." }}</p>
+            <small>{{ insight.created_at.strftime("%Y-%m-%d") }} &middot; {{ insight.jurisdiction or "Jurisdiction pending" }}</small>
+          </div>
+        </article>
+      {% else %}
+        <article class="current-affairs-card adverse-demo-card">
+          <div>
+            <span class="issue-chip">Example workflow</span>
+            <h4>Public-sector governance alert</h4>
+            <p>The dashboard can search live public sources and save cautious, structured adverse-media summaries. Alerts separate direct allegations from official-capacity-only or contextual mentions and require analyst verification.</p>
+            <small>Sign in to run a source-backed adverse-media search.</small>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+  <section class="public-search-card" id="public-preview">
+    <div class="public-preview-copy">
+      <div>
+        <p class="hero-kicker">Public preview</p>
+        <h3>Search up to 3 names</h3>
+        <p>Try a limited public PEP/PIP preview. Public searches are limited to 3 names per visitor per day; subscribers can run full manual and bulk screening.</p>
+        <p class="public-use-warning">Preview outputs are indicative only. They are not proof of wrongdoing, sanctions status, criminal conduct, or final PEP/PIP classification.</p>
+        {% set remaining_preview = public_remaining|default(3) %}
+        <div class="preview-quota {% if remaining_preview == 0 %}is-empty{% endif %}">
+          <span>Remaining public preview searches today</span>
+          <strong>{{ remaining_preview }}</strong>
+          {% if remaining_preview == 0 %}
+            <small>Preview limit reached. Sign in for full screening and bulk searches.</small>
+          {% else %}
+            <small>Public preview is limited to 3 names per visitor per day.</small>
+          {% endif %}
+        </div>
+      </div>
+      <form method="post" action="{{ url_for('public_search') }}" class="public-search-form">
+        <div class="search-input-wrap">
+          <span aria-hidden="true">Search</span>
+          <textarea name="public_names" rows="3" placeholder="Duma Boko&#10;Ndaba Gaolathe&#10;Festus Mogae">{{ public_names or "" }}</textarea>
+        </div>
+        <button type="submit">Preview search</button>
+      </form>
+    </div>
+    <div class="public-preview-panel">
+      <div class="mockup-topbar"><span></span><span></span><span></span></div>
+      <div class="public-results">
+        {% if public_results %}
+          {% for result in public_results %}
+            <article class="public-result">
+              <div>
+                <strong>{{ result.searched_name }}</strong>
+                <span class="badge {{ result.decision|lower|replace(' ', '-') }}">{{ result.decision }} &middot; {{ result.score }}%</span>
+              </div>
+              {% if result.record %}
+                <h4>{{ result.record.full_name }}</h4>
+                <p>{{ result.snippet }}</p>
+                <small>{{ result.record.position or "Position not recorded" }} &middot; {{ result.record.category }} &middot; {{ result.record.jurisdiction }}</small>
+              {% else %}
+                <h4>No preview match</h4>
+                <p>{{ result.snippet }}</p>
+                <small>Sign in for deeper review and analyst workflow.</small>
+              {% endif %}
+            </article>
+          {% endfor %}
+        {% else %}
+          <article class="public-result sample">
+            <div><strong>Example result</strong><span class="badge possible-match">Possible match &middot; 75%</span></div>
+            <h4>Duma Boko</h4>
+            <p>Duma Gideon Boko is shown as a public-office profile with role/category context, source-backed evidence, and review status in the subscriber workspace.</p>
+            <small>President &middot; Domestic PIP &middot; Botswana</small>
+          </article>
+        {% endif %}
+      </div>
+      <p class="preview-disclaimer">Preview data is limited and may contain false positives or omissions. Subscriber workflows include source evidence, reviewer notes and approval/dismissal controls.</p>
+    </div>
+  </section>
+  <section class="landing-section">
+    <div class="section-head">
+      <div>
+        <p class="hero-kicker">Why screening matters</p>
+        <h3>Built for AML, CFT and counterparty risk teams</h3>
+        <p>Screen customers, suppliers, donors, public officials and related parties against a traceable local PIP database, public-source evidence, and adverse-media review queues.</p>
+      </div>
+    </div>
+    <div class="landing-grid">
+      <article class="landing-feature">
+        <span>01</span>
+        <h4>Higher-precision matching</h4>
+        <p>Name validation, merged-name splitting, confidence scoring and role evidence help separate real people from page headings, institutions and menu text.</p>
+      </article>
+      <article class="landing-feature">
+        <span>02</span>
+        <h4>Audit-ready evidence</h4>
+        <p>Every candidate can carry a basis, source URL, source excerpt, confidence score, reviewer notes and last-reviewed date.</p>
+      </article>
+      <article class="landing-feature">
+        <span>03</span>
+        <h4>Human review controls</h4>
+        <p>Confirm, dismiss or escalate matches before reliance. The platform supports review workflows rather than automated accusations or decisions.</p>
+      </article>
+    </div>
+  </section>
+  <section class="landing-section access-section">
+    <div>
+      <p class="hero-kicker">Access options</p>
+      <h3>Use the workflow that fits your compliance team</h3>
+    </div>
+    <div class="access-grid">
+      <article>
+        <h4>Web screening</h4>
+        <p>Manual searches, public preview, candidate review and confirmed profile management.</p>
+      </article>
+      <article>
+        <h4>Bulk Excel screening</h4>
+        <p>Download templates, upload lists, export editable records, and re-upload reviewed adverse-media data.</p>
+      </article>
+      <article>
+        <h4>Source intelligence</h4>
+        <p>Ingest PDFs, public websites and AI-assisted analysis while keeping all scraped records in candidate review.</p>
+      </article>
+      <article>
+        <h4>Integration-ready</h4>
+        <p>Connect screening results to onboarding, KYC, CRM, case-management and reporting systems through backend APIs and structured JSON.</p>
+      </article>
+    </div>
+  </section>
+  <section class="landing-section subscriber-section">
+    <div>
+      <p class="hero-kicker">Subscriber offers</p>
+      <h3>Built for teams that need defensible screening outcomes</h3>
+    </div>
+    <div class="subscriber-offers">
+      <article><strong>Screening workspace</strong><span>Manual screening, Excel upload, monitoring lists and result exports.</span></article>
+      <article><strong>Adverse-media review</strong><span>Web-backed source summaries, linkage classification and analyst decisions.</span></article>
+      <article><strong>Organisation API</strong><span>Integrate screening into onboarding, procurement, audit and case-management systems.</span></article>
+      <article><strong>Audit support</strong><span>Reviewer notes, timestamps, evidence basis and decision history for compliance files.</span></article>
+    </div>
+  </section>
+  <section class="landing-section pricing-section" id="pricing">
+    <div class="section-head">
+      <div>
+        <p class="hero-kicker">Subscription plans</p>
+        <h3>Choose the access level that matches your compliance workflow</h3>
+      </div>
+    </div>
+    <div class="pricing-grid">
+      {% for code, plan in subscription_plans.items() %}
+        <article class="pricing-card {% if code == 'professional' %}featured{% endif %}">
+          {% if code == 'professional' %}<span class="issue-chip">Recommended</span>{% endif %}
+          <h4>{{ plan.name }}</h4>
+          <strong>{{ format_bwp(plan.fee) }}<small>/month</small></strong>
+          <p>{{ plan.summary }}</p>
+          <ul>
+            {% for feature in plan.features %}
+              <li>{{ feature }}</li>
+            {% endfor %}
+          </ul>
+          <a class="button-link {% if code != 'professional' %}ghost{% endif %}" href="{{ url_for('register', plan=code) }}">Register for {{ plan.name }}</a>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+  <section class="landing-section industries-section">
+    <div>
+      <p class="hero-kicker">Who should use it</p>
+      <h3>Designed for regulated and high-risk workflows</h3>
+    </div>
+    <div class="industry-list">
+      <span><b>FI</b> Banks</span>
+      <span><b>IN</b> Insurance</span>
+      <span><b>AU</b> Auditors</span>
+      <span><b>PR</b> Procurement</span>
+      <span><b>LF</b> Legal firms</span>
+      <span><b>GC</b> Government contractors</span>
+      <span><b>NP</b> Non-profits</span>
+      <span><b>TC</b> Trust and company services</span>
+    </div>
+  </section>
+  <section class="conversion-section">
+    <div class="landing-cta">
+      <div>
+        <p class="hero-kicker">Ready for a controlled review process?</p>
+        <h3>Move from raw public mentions to reviewed PEP/PIP intelligence.</h3>
+        <p>Use public preview for quick checks, then sign in for bulk screening, API-enabled workflows, adverse-media classification and source evidence.</p>
+        <p class="cta-disclaimer">Use of the service is subject to lawful purpose, privacy obligations, source verification and human decision-making.</p>
+        <a href="{{ url_for('register') }}" class="primary-action hero-action">Register workspace</a>
+      </div>
+    </div>
+    <form method="post" action="{{ url_for('login') }}" class="login-card" id="signin">
+      <div class="login-auth-header">
+        <span class="brand-mark auth">RS</span>
+        <div>
+          <h2 class="login-auth-title">Sign In</h2>
+          <p class="login-auth-subtitle">Use your subscriber or admin account</p>
+        </div>
+      </div>
+      <div class="login-form">
+        <label>Email
+          <input name="email" type="email" required autocomplete="email" placeholder="you@organisation.com">
+        </label>
+        <label>Password
+          <input name="password" type="password" required autocomplete="current-password" placeholder="Enter your password">
+        </label>
+        <button type="submit" class="login-submit">Sign In</button>
+        <a href="{{ url_for('forgot_password') }}">Forgot password?</a>
+      </div>
+      <div class="login-info-box">
+        <strong>Subscriber access</strong>
+        <p>Use credentials issued to your organisation, or register a workspace to start the subscription approval process.</p>
+        <a href="{{ url_for('register') }}">Register a workspace</a>
+      </div>
+    </form>
+  </section>
+</section>
+{% endblock %}

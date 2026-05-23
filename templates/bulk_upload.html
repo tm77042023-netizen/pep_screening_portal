@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="hero-kicker">Bulk Screening</p>
+    <h1>Upload an Excel name list</h1>
+  </div>
+  <a class="button-link ghost" href="{{ url_for('download_template') }}">Download Template</a>
+</section>
+<form method="post" enctype="multipart/form-data" class="card stack-form">
+  <label>Excel file
+    <input type="file" name="file" accept=".xlsx" required>
+  </label>
+  <button type="submit">Upload and Screen</button>
+</form>
+{% endblock %}

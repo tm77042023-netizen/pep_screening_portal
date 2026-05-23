@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-hero compact">
+  <div>
+    <p class="hero-kicker">Account security</p>
+    <h2>Profile & Password</h2>
+    <p>Update your login email and change your password. Use a strong password that is not shared with any other system.</p>
+  </div>
+</section>
+
+<section class="dashboard-grid two-col">
+  <article class="panel-card">
+    <div class="section-head">
+      <div>
+        <p class="hero-kicker">Login email</p>
+        <h3>Change email address</h3>
+      </div>
+    </div>
+    <form method="post" class="stacked-form">
+      <input type="hidden" name="action" value="update_email">
+      <label>
+        Current email
+        <input type="email" value="{{ profile_user.email }}" disabled>
+      </label>
+      <label>
+        New email
+        <input type="email" name="email" value="{{ profile_user.email }}" required>
+      </label>
+      <label>
+        Current password
+        <input type="password" name="current_password" required>
+      </label>
+      <button type="submit">Update Email</button>
+    </form>
+  </article>
+
+  <article class="panel-card">
+    <div class="section-head">
+      <div>
+        <p class="hero-kicker">Password</p>
+        <h3>Change password</h3>
+      </div>
+    </div>
+    <form method="post" class="stacked-form">
+      <input type="hidden" name="action" value="update_password">
+      <label>
+        Current password
+        <input type="password" name="current_password" required>
+      </label>
+      <label>
+        New password
+        <input type="password" name="password" minlength="8" required>
+      </label>
+      <label>
+        Confirm new password
+        <input type="password" name="confirm_password" minlength="8" required>
+      </label>
+      <button type="submit">Update Password</button>
+    </form>
+  </article>
+</section>
+{% endblock %}

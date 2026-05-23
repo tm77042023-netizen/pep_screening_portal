@@ -1,0 +1,629 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="admin-hero">
+  <div>
+    <p class="hero-kicker">Administrator workspace</p>
+    <h1>PEP/PIP database</h1>
+    <p>Review candidates, confirm public-office evidence, manage duplicates, and track adverse media.</p>
+  </div>
+  <a class="primary-action hero-action" href="#add-record">Add record</a>
+</section>
+
+<section class="stats-grid admin-stats">
+  <div class="stat"><span>Total records</span><strong>{{ stats.total }}</strong><small>Visible database records</small></div>
+  <div class="stat warning"><span>Candidates</span><strong>{{ stats.candidates }}</strong><small>Awaiting review</small></div>
+  <div class="stat emphasis"><span>Needs review</span><strong>{{ stats.needs_review }}</strong><small>Manual validation queue</small></div>
+  <div class="stat success"><span>Adverse media</span><strong>{{ stats.adverse }}</strong><small>Non-clear indicators</small></div>
+  <div class="stat"><span>Duplicates</span><strong>{{ stats.duplicates }}</strong><small>Suggested merge groups</small></div>
+  <div class="stat emphasis"><span>Relationships</span><strong>{{ stats.relationships }}</strong><small>RCA/family links</small></div>
+  <div class="stat success"><span>Source verified</span><strong>{{ stats.verified }}</strong><small>Records with verified evidence</small></div>
+  <div class="stat warning"><span>Rejected review</span><strong>{{ stats.rejected }}</strong><small>Can be restored by admin</small></div>
+  <div class="stat emphasis"><span>RCA candidates</span><strong>{{ stats.relationship_candidates }}</strong><small>Close family/associate review</small></div>
+</section>
+
+<section class="card admin-search-card">
+  <div class="section-head">
+    <div><h3>Search and filter</h3><p>Find records by name, alias, title, status, risk signal, or source type.</p></div>
+  </div>
+  <form class="filter-bar" method="get">
+    <input name="q" value="{{ query }}" placeholder="Search name, alias, title...">
+    <select name="category">
+      <option value="">All categories</option>
+      {% for option in filter_options.categories %}
+        <option value="{{ option }}" {% if filters.category == option %}selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+    <select name="jurisdiction">
+      <option value="">All jurisdictions</option>
+      {% for option in filter_options.jurisdictions %}
+        <option value="{{ option }}" {% if filters.jurisdiction == option %}selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+    <select name="status">
+      <option value="">All statuses</option>
+      {% for option in filter_options.statuses %}
+        <option value="{{ option }}" {% if filters.status == option %}selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+    <select name="confidence">
+      <option value="">All confidence</option>
+      {% for option in ["High", "Medium", "Low", "Unknown"] %}
+        <option value="{{ option }}" {% if filters.confidence == option %}selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+    <select name="adverse_media">
+      <option value="">All adverse media</option>
+      {% for option in filter_options.adverse_media %}
+        <option value="{{ option }}" {% if filters.adverse_media == option %}selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+    <select name="source_type">
+      <option value="">All source types</option>
+      {% for option in filter_options.source_types %}
+        <option value="{{ option }}" {% if filters.source_type == option %}selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">Apply</button>
+  </form>
+  <nav class="admin-tabs">
+    {% for key, label in [("all", "All Records"), ("candidates", "Candidates"), ("confirmed", "Confirmed"), ("needs_review", "Needs Review"), ("adverse_media", "Adverse Media"), ("duplicates", "Duplicates"), ("rejected", "Rejected Review")] %}
+      <a class="{% if filters.tab == key %}active{% endif %}" href="{{ url_for('admin', tab=key, q=query, category=filters.category, jurisdiction=filters.jurisdiction, status=filters.status, confidence=filters.confidence, adverse_media=filters.adverse_media, source_type=filters.source_type) }}">{{ label }}</a>
+    {% endfor %}
+  </nav>
+  <p class="hint">{{ records|length }} record(s) shown. Detailed evidence is available through each row's details panel.</p>
+  <div class="actions tender-actions">
+    <a class="button-link secondary" href="{{ url_for('coverage_dashboard') }}">Coverage dashboard</a>
+    <a class="button-link secondary" href="{{ url_for('bulk_edit') }}">Bulk edit database</a>
+    <a class="button-link secondary" href="{{ url_for('staged_imports') }}">Staged imports</a>
+    <a class="button-link secondary" href="{{ url_for('data_dictionary') }}">Data dictionary</a>
+    <a class="button-link secondary" href="{{ url_for('api_feed_records', format='json') }}">JSON feed</a>
+    <a class="button-link secondary" href="{{ url_for('api_feed_records', format='csv') }}">CSV feed</a>
+    <a class="button-link secondary" href="{{ url_for('api_feed_records', format='xlsx') }}">Excel feed</a>
+    <a class="button-link secondary" href="{{ url_for('compliance_pack') }}">Compliance pack</a>
+    <a class="button-link secondary" href="{{ url_for('commercial_pack_download') }}">SLA/commercial pack</a>
+  </div>
+</section>
+
+<section class="card full-width-card">
+  <details class="section-collapse" open>
+    <summary class="section-collapse-summary">
+      <div>
+        <h3>Results</h3>
+        <p>Key record fields only. Open details for evidence, adverse media, and audit notes.</p>
+      </div>
+      <div class="section-collapse-actions">
+        <span class="pill">{{ records|length }} shown</span>
+        <button type="button" class="button-link secondary js-expand-results" data-mode="collapse">Collapse all</button>
+        <button type="button" class="button-link secondary js-expand-results" data-mode="expand">Expand all</button>
+      </div>
+    </summary>
+    <div class="table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr><th>Name</th><th>Fields</th><th>Adverse Media</th><th>Last Reviewed</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+      {% for record in records %}
+        <tr>
+          <td><strong>{{ record.full_name }}</strong><small>{{ record.aliases or "" }}</small></td>
+          <td>
+            <details class="field-collapse">
+              <summary class="collapse-toggle" aria-label="Show classification fields">&gt;</summary>
+              <div class="collapsed-fields">
+                <span><b>Category</b>{{ record.category }}</span>
+                <span><b>Position</b>{{ record.position or "-" }}</span>
+                <span><b>Jurisdiction</b>{{ record.jurisdiction }}</span>
+                <span><b>Status</b>{{ record.status }}</span>
+                <span><b>Confidence</b>{{ confidence_band(record) }}</span>
+              </div>
+            </details>
+          </td>
+          <td><span class="risk-pill {{ adverse_media_label(record)|lower|replace(' ', '-')|replace('/', '-') }}">{{ adverse_media_label(record) }}</span></td>
+          <td>{{ record.last_reviewed_date or "-" }}</td>
+          <td>
+            <button type="button" class="button-link secondary js-open-dialog" data-dialog-id="record-dialog-{{ record.id }}">View</button>
+
+            <dialog id="record-dialog-{{ record.id }}" class="record-dialog">
+              <div class="dialog-head">
+                <div>
+                  <p class="hero-kicker">Record details</p>
+                  <h3>{{ record.full_name }}</h3>
+                  {% if record.aliases %}<p class="hint">{{ record.aliases }}</p>{% endif %}
+                </div>
+                <button type="button" class="icon-close js-close-dialog" aria-label="Close">×</button>
+              </div>
+
+              <div class="detail-grid dialog-grid">
+                <div>
+                  <h4>Profile</h4>
+                  <p><strong>Category:</strong> {{ record.category }}</p>
+                  <p><strong>Position:</strong> {{ record.position or "-" }}</p>
+                  <p><strong>Jurisdiction:</strong> {{ record.jurisdiction }}</p>
+                  <p><strong>Status:</strong> {{ record.status }}</p>
+                  <p><strong>Organisation:</strong> {{ record.organisation or "-" }}</p>
+                  <p><strong>Source type:</strong> {{ record.source_type or "-" }}</p>
+                  <p><strong>Date identified:</strong> {{ record.date_identified or "-" }}</p>
+                  <p><strong>Source date:</strong> {{ record.source_date or "-" }}</p>
+                  <p><strong>Verification:</strong> {{ record.verification_status or "Unverified" }}</p>
+                  <p><strong>Last verified:</strong> {{ record.last_verified_date or "-" }}</p>
+                  <p><strong>Next review due:</strong> {{ record.next_review_due or "-" }}</p>
+                  <p><strong>Source reliability:</strong> {{ record.source_reliability or "-" }}</p>
+                </div>
+                <div>
+                  <h4>Evidence</h4>
+                  <p><strong>Basis:</strong> {{ basis_in_document(record) }}</p>
+                  <p><strong>Source:</strong>
+                    {% if record.source_url %}<a href="{{ record.source_url }}" target="_blank" rel="noreferrer">{{ record.source_name or "Open source" }}</a>{% else %}{{ record.source_name or "-" }}{% endif %}
+                  </p>
+                  <p><strong>Excerpt:</strong> {{ record.source_excerpt or record.notes or "-" }}</p>
+                </div>
+                <div>
+                  <h4>Adverse media</h4>
+                  <p><strong>Status:</strong> {{ adverse_media_label(record) }}</p>
+                  <p><strong>Linkage:</strong> {{ record.adverse_media_linkage or "-" }}</p>
+                  <p><strong>Reviewer notes:</strong> {{ record.reviewer_notes or "-" }}</p>
+                </div>
+                <div>
+                  <h4>Actions</h4>
+                  <div class="record-actions">
+                    <form method="post" action="{{ url_for('record_action', record_id=record.id) }}">
+                      <input type="hidden" name="action" value="confirm">
+                      <input name="reviewer_note" placeholder="Optional review note">
+                      <button type="submit" class="small">Confirm</button>
+                    </form>
+                    <form method="post" action="{{ url_for('record_action', record_id=record.id) }}">
+                      <input type="hidden" name="action" value="needs_review">
+                      <input name="reviewer_note" placeholder="Why does this need review?">
+                      <button type="submit" class="small secondary">Needs review</button>
+                    </form>
+                    <form method="post" action="{{ url_for('record_action', record_id=record.id) }}">
+                      <input type="hidden" name="action" value="duplicate">
+                      <input name="reviewer_note" placeholder="Duplicate of which profile?">
+                      <button type="submit" class="small secondary">Mark duplicate</button>
+                    </form>
+                    <form method="post" action="{{ url_for('record_action', record_id=record.id) }}">
+                      <input type="hidden" name="action" value="reject">
+                      <input name="reviewer_note" placeholder="Reason for rejection">
+                      <button type="submit" class="small danger">Reject</button>
+                    </form>
+                    <form method="post" action="{{ url_for('record_action', record_id=record.id) }}" class="adverse-action">
+                      <input type="hidden" name="action" value="adverse_media">
+                      <select name="adverse_media_status">
+                        {% for option in filter_options.adverse_media %}
+                          <option value="{{ option }}" {% if adverse_media_label(record) == option %}selected{% endif %}>{{ option }}</option>
+                        {% endfor %}
+                      </select>
+                      <input name="adverse_media_linkage" placeholder="Direct, indirect, contextual..." value="{{ record.adverse_media_linkage or '' }}">
+                      <input name="reviewer_note" placeholder="Adverse media note">
+                      <button type="submit" class="small">Update adverse media</button>
+                    </form>
+                  </div>
+                </div>
+                <div class="edit-suggestion-panel">
+                  <details>
+                    <summary>Edit suggested info</summary>
+                    <form method="post" action="{{ url_for('edit_record', record_id=record.id) }}" class="stack-form edit-record-form">
+                      <label>Full name<input name="full_name" value="{{ record.full_name }}"></label>
+                      <label>Aliases<input name="aliases" value="{{ record.aliases or '' }}"></label>
+                      <label>Category<input name="category" value="{{ record.category }}"></label>
+                      <label>Jurisdiction<input name="jurisdiction" value="{{ record.jurisdiction }}"></label>
+                      <label>Position / Title<input name="position" value="{{ record.position or '' }}"></label>
+                      <label>Organisation<input name="organisation" value="{{ record.organisation or '' }}"></label>
+                      <label>Status<input name="status" value="{{ record.status }}"></label>
+                      <label>Date identified<input name="date_identified" value="{{ record.date_identified or '' }}"></label>
+                      <label>Last reviewed date<input name="last_reviewed_date" value="{{ record.last_reviewed_date or '' }}"></label>
+                      <label>Source type<input name="source_type" value="{{ record.source_type or '' }}"></label>
+                      <label>Verification status<input name="verification_status" value="{{ record.verification_status or 'Unverified' }}"></label>
+                      <label>Verified by<input name="verified_by" value="{{ record.verified_by or '' }}"></label>
+                      <label>Last verified date<input name="last_verified_date" value="{{ record.last_verified_date or '' }}"></label>
+                      <label>Next review due<input name="next_review_due" value="{{ record.next_review_due or '' }}"></label>
+                      <label>Source reliability<input name="source_reliability" value="{{ record.source_reliability or '' }}"></label>
+                      <label>Source name<input name="source_name" value="{{ record.source_name or '' }}"></label>
+                      <label>Source URL / reference<input name="source_url" value="{{ record.source_url or '' }}"></label>
+                      <label>Source date<input name="source_date" value="{{ record.source_date or '' }}"></label>
+                      <label>Adverse media status<input name="adverse_media_status" value="{{ adverse_media_label(record) }}"></label>
+                      <label>Adverse media linkage<input name="adverse_media_linkage" value="{{ record.adverse_media_linkage or '' }}"></label>
+                      <label>Source excerpt<textarea name="source_excerpt">{{ record.source_excerpt or '' }}</textarea></label>
+                      <label>Reviewer notes<textarea name="reviewer_notes">{{ record.reviewer_notes or '' }}</textarea></label>
+                      <label>Basis / notes<textarea name="notes">{{ record.notes or '' }}</textarea></label>
+                      <button type="submit" class="small">Save suggested info</button>
+                    </form>
+                  </details>
+                </div>
+              </div>
+              <form method="dialog" class="dialog-foot">
+                <button type="submit" class="button-link secondary">Close</button>
+              </form>
+            </dialog>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5">No records found.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  </details>
+</section>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".js-expand-results").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const expand = btn.dataset.mode === "expand";
+      document.querySelectorAll("details.field-collapse").forEach((panel) => {
+        panel.open = expand;
+      });
+    });
+  });
+
+  const closeDialog = (dialog) => {
+    if (!dialog || typeof dialog.close !== "function") return;
+    dialog.close();
+  };
+
+  document.addEventListener("click", (event) => {
+    const openBtn = event.target.closest(".js-open-dialog");
+    if (openBtn) {
+      const id = openBtn.getAttribute("data-dialog-id");
+      const dialog = id ? document.getElementById(id) : null;
+      if (dialog && typeof dialog.showModal === "function") {
+        dialog.showModal();
+      }
+      return;
+    }
+
+    const closeBtn = event.target.closest(".js-close-dialog");
+    if (closeBtn) {
+      const dialog = closeBtn.closest("dialog");
+      closeDialog(dialog);
+      return;
+    }
+
+    // Click outside dialog content closes (Gmail-like)
+    if (event.target && event.target.nodeName === "DIALOG") {
+      closeDialog(event.target);
+    }
+  });
+});
+</script>
+
+<section class="dashboard-grid">
+  <div class="card queue-card">
+    <div class="section-head"><div><h3>Review queue</h3><p>What needs attention next.</p></div></div>
+    <div class="queue-list">
+      <a href="{{ url_for('admin', tab='candidates') }}"><strong>New candidates</strong><span>{{ stats.candidates }}</span></a>
+      <a href="{{ url_for('admin', tab='duplicates') }}"><strong>Possible duplicates</strong><span>{{ stats.duplicates }}</span></a>
+      <a href="{{ url_for('admin', tab='adverse_media') }}"><strong>Adverse media pending</strong><span>{{ stats.adverse }}</span></a>
+      <a href="{{ url_for('admin', confidence='Low') }}"><strong>Low-confidence matches</strong><span>Review</span></a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-head"><div><h3>DailyNews PDF ingestion</h3><p>Temporary PDF import with AI/rules extraction.</p></div></div>
+    <p class="hint">ChatGPT source analysis: {% if openai_analysis_enabled %}enabled via {{ openai_analysis_model }}.{% else %}not configured. Set OPENAI_API_KEY to enable AI-assisted PDF/source analysis.{% endif %}</p>
+    <form method="post" action="{{ url_for('run_dailynews_update') }}" class="inline-form">
+      <input name="max_pdfs" type="number" min="1" max="100" value="25">
+      <button type="submit">Import PDFs</button>
+    </form>
+    <p class="hint">PDFs are downloaded temporarily, searched for candidate public-person names, and deleted after processing.</p>
+    <div class="section-head compact"><div><h3>Upload PDFs</h3><p>Add your own PDFs for AI/rules candidate extraction.</p></div></div>
+    <form method="post" action="{{ url_for('upload_pdfs') }}" class="stack-form compact-form" enctype="multipart/form-data">
+      <label>Source jurisdiction<input name="jurisdiction" value="Botswana" placeholder="Botswana"></label>
+      <label>PDF files<input name="pdf_files" type="file" accept="application/pdf,.pdf" multiple required></label>
+      <button type="submit">Upload and analyse PDFs</button>
+    </form>
+  </div>
+</section>
+
+<section class="dashboard-grid">
+  <div class="card">
+    <div class="section-head"><div><h3>Web link PIP/adverse-media review</h3><p>Paste any public web link. The app reviews that page and a limited number of same-domain hyperlinks for PIP evidence and adverse-media context.</p></div></div>
+    <form method="post" action="{{ url_for('run_weblink_review') }}" class="stack-form compact-form">
+      <label>Web link<input name="url" required placeholder="https://example.com/news-or-directory-page"></label>
+      <label>Source jurisdiction<input name="jurisdiction" value="Botswana" placeholder="Botswana"></label>
+      <label>Maximum hyperlinks to review<input name="max_links" type="number" min="0" max="25" value="10"></label>
+      <label>Hyperlink scope
+        <select name="same_domain_only">
+          <option value="1">Same website only</option>
+          <option value="0">Allow external links</option>
+        </select>
+      </label>
+      <button type="submit">Review web link</button>
+    </form>
+    <p class="hint">Created records stay in Candidate review. Rejected strings are logged separately and are not shown as normal PIP candidates.</p>
+  </div>
+  <div class="card">
+    <div class="section-head"><div><h3>Paste transcript text (staged)</h3><p>Paste transcript text from a video, meeting, or broadcast. The app extracts possible PIPs and immediate-family / close-associate relationship phrases for admin approval.</p></div></div>
+    <form method="post" action="{{ url_for('stage_transcript_paste') }}" class="stack-form compact-form">
+      <label>Source name<input name="source_name" value="Manual transcript paste" placeholder="BTV News transcript"></label>
+      <label>Source URL / reference<input name="source_url" placeholder="https://... or document reference"></label>
+      <label>Source jurisdiction<input name="jurisdiction" value="Botswana" placeholder="Botswana"></label>
+      <label>Paste transcript text<textarea name="transcript_text" required placeholder="Paste transcript text here."></textarea></label>
+      <button type="submit">Stage transcript results</button>
+    </form>
+    <p class="hint">Results are staged for review. Approve/reject rows, then apply approved items into the live database.</p>
+  </div>
+  {# Transcript paste panel lives above. #}
+  <div class="card">
+    <div class="section-head"><div><h3>Recent web link reviews</h3><p>Latest URL crawl outcomes and candidate creation logs.</p></div></div>
+    <table>
+      <thead><tr><th>Date</th><th>Source</th><th>Pages</th><th>Candidates</th><th>Adverse context</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for log in web_logs %}
+          <tr>
+            <td>{{ log.created_at.strftime("%Y-%m-%d %H:%M") if log.created_at else "-" }}</td>
+            <td>{% if log.source_url %}<a href="{{ log.source_url }}">{{ log.source_name or log.source_url }}</a>{% else %}{{ log.source_name or "-" }}{% endif %}</td>
+            <td>{{ log.pages_reviewed }}</td>
+            <td>{{ log.candidates_created }}</td>
+            <td>{{ log.adverse_context_hits }}</td>
+            <td>{{ log.status }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6">No web link reviews yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="dashboard-grid">
+  <div class="card">
+    <div class="section-head"><div><h3>Excel import / export</h3><p>Export records for editing, then upload potential PIP and adverse-media updates.</p></div></div>
+    <div class="actions">
+      <a class="primary-action" href="{{ url_for('export_records') }}">Export editable workbook</a>
+    </div>
+    <p class="hint">Keep the <strong>id</strong> column to update existing records. Leave id blank to create new candidate-review records.</p>
+    <form method="post" action="{{ url_for('import_records') }}" class="stack-form compact-form" enctype="multipart/form-data">
+      <label>Edited Excel workbook<input name="records_file" type="file" accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required></label>
+      <button type="submit">Upload edited workbook</button>
+    </form>
+  </div>
+  <div class="card">
+    <div class="section-head"><div><h3>Excel columns supported</h3><p>Use these fields for potential PIP and adverse media data.</p></div></div>
+    <p class="hint">full_name, aliases, category, jurisdiction, position, organisation, status, adverse_media_status, adverse_media_linkage, source_type, source_name, source_url, source_excerpt, reviewer_notes, notes.</p>
+  </div>
+</section>
+
+<section class="dashboard-grid">
+  <div class="card">
+    <div class="section-head"><div><h3>CIPA registry paste (staged)</h3><p>Paste CIPA company page text. The app extracts company directors/shareholders into a staged import run for admin approval.</p></div></div>
+    <form method="post" action="{{ url_for('stage_registry_paste') }}" class="stack-form compact-form">
+      <label>CIPA page URL / reference<input name="source_url" placeholder="https://www.cipa.co.bw/..."></label>
+      <label>Jurisdiction<input name="jurisdiction" value="Botswana"></label>
+      <label>Paste page text<textarea name="registry_text" required placeholder="Paste the full CIPA page text here (company details + directors/shareholders)."></textarea></label>
+      <button type="submit">Stage registry results</button>
+    </form>
+    <p class="hint">This does not log into CIPA. It stages what you paste for review, then you approve/apply.</p>
+  </div>
+</section>
+
+<section class="dashboard-grid">
+  <div class="card">
+    <div class="section-head"><div><h3>Political current affairs</h3><p>Manage dynamic landing-page issues used to focus PEP/PIP monitoring.</p></div></div>
+    <div class="queue-list">
+      {% for issue in current_affairs %}
+        <div class="issue-admin-row">
+          <div>
+            <strong>{{ issue.title }}</strong>
+            <small>{{ issue.category }} &middot; {{ issue.jurisdiction }} &middot; {{ issue.issue_date or "No date" }} &middot; {% if issue.is_active %}Active{% else %}Hidden{% endif %}</small>
+          </div>
+          <form method="post" action="{{ url_for('toggle_current_affairs', issue_id=issue.id) }}">
+            <button type="submit" class="small secondary">{% if issue.is_active %}Hide{% else %}Show{% endif %}</button>
+          </form>
+        </div>
+      {% else %}
+        <p class="hint">No current-affairs issues yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="section-head"><div><h3>Add current-affairs issue</h3><p>Add a politics item, election issue, public appointment theme, or commemorative event.</p></div></div>
+    <form method="post" action="{{ url_for('add_current_affairs') }}" class="stack-form compact-form">
+      <label>Title<input name="title" required placeholder="e.g. Botswana marks 60 years of independence"></label>
+      <label>Category<input name="category" value="Politics"></label>
+      <label>Jurisdiction<input name="jurisdiction" value="Botswana"></label>
+      <label>Issue date<input name="issue_date" placeholder="YYYY-MM-DD"></label>
+      <label>Image URL or static path<input name="image_url" placeholder="current-affairs/60-years.png"></label>
+      <label>Source name<input name="source_name" placeholder="Government, newspaper, editorial note"></label>
+      <label>Source URL<input name="source_url" placeholder="https://..."></label>
+      <label>Summary<textarea name="summary" required placeholder="Explain why this issue matters for PEP/PIP screening and monitoring."></textarea></label>
+      <label>Status
+        <select name="is_active">
+          <option value="1">Active on landing page</option>
+          <option value="0">Hidden</option>
+        </select>
+      </label>
+      <button type="submit">Add current-affairs issue</button>
+    </form>
+  </div>
+</section>
+
+<section class="dashboard-grid">
+  <div class="card" id="add-record">
+    <div class="section-head"><div><h3>Add PEP/PIP record</h3><p>Create a manual record with evidence and review fields.</p></div></div>
+    <form method="post" action="{{ url_for('add_record') }}" class="stack-form labeled-form">
+      <label>Full name<input name="full_name" required></label>
+      <label>Aliases<input name="aliases" placeholder="Separate aliases with semicolons"></label>
+      <label>PIP category<input name="category" value="Domestic PIP"></label>
+      <label>Jurisdiction<input name="jurisdiction" value="Botswana"></label>
+      <label>Position / Title<input name="position" placeholder="e.g. Minister of Finance, MP, Mayor, Board Chairperson"></label>
+      <label>Organisation<input name="organisation" placeholder="Government, SOE, party, authority"></label>
+      <label>Review status<input name="status" value="Candidate review" placeholder="Candidate, Confirmed, Rejected, Needs review, Duplicate"></label>
+      <label>Date identified<input name="date_identified" placeholder="YYYY-MM-DD"></label>
+      <label>Last reviewed date<input name="last_reviewed_date" placeholder="YYYY-MM-DD"></label>
+      <label>Last verified date<input name="last_verified_date" placeholder="YYYY-MM-DD"></label>
+      <label>Next review due<input name="next_review_due" placeholder="YYYY-MM-DD"></label>
+      <label>Verification status
+        <select name="verification_status">
+          {% for option in filter_options.verification_statuses %}
+            <option value="{{ option }}">{{ option }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Verified by<input name="verified_by" placeholder="Reviewer name or email"></label>
+      <label>Source reliability
+        <select name="source_reliability">
+          {% for option in filter_options.source_reliability %}
+            <option value="{{ option }}">{{ option }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Source type<input name="source_type" value="Manual entry" placeholder="Government, News, Registry, Manual entry"></label>
+      <label>Source name<input name="source_name" placeholder="Publication, registry, website, document"></label>
+      <label>Source URL / document reference<input name="source_url" placeholder="https://... or document reference"></label>
+      <label>Source date<input name="source_date" placeholder="YYYY-MM-DD or document date"></label>
+      <label>Source excerpt<textarea name="source_excerpt" placeholder="Paste the text supporting the classification"></textarea></label>
+      <label>Relationship to adverse media<input name="adverse_media_linkage" placeholder="Direct, indirect, contextual, official capacity only"></label>
+      <label>Adverse media status<input name="adverse_media_status" value="Pending review" placeholder="No adverse media, under investigation, sanctions match"></label>
+      <label>Reviewer notes<textarea name="reviewer_notes" placeholder="Human judgment and recommended action"></textarea></label>
+      <label>Basis / notes<textarea name="notes" placeholder="Reason for classification, limitations, audit comments"></textarea></label>
+      <button type="submit">Add Record</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="section-head"><div><h3>Public sources</h3><p>Source checks and status history.</p></div></div>
+    <table>
+      <thead><tr><th>Source</th><th>Jurisdiction</th><th>Last status</th><th></th></tr></thead>
+      <tbody>
+      {% for source in sources %}
+        <tr>
+          <td>{{ source.name }}</td>
+          <td>{{ source.jurisdiction }}</td>
+          <td>{{ source.last_status or "Not checked" }}</td>
+          <td><form method="post" action="{{ url_for('run_source_update', source_id=source.id) }}"><button type="submit" class="small">Update</button></form></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <form method="post" action="{{ url_for('add_source') }}" class="stack-form compact-form">
+      <input name="name" placeholder="Source name" required>
+      <input name="url" placeholder="https://..." required>
+      <input name="jurisdiction" placeholder="Jurisdiction" value="Botswana">
+      <button type="submit">Add Source</button>
+    </form>
+  </div>
+</section>
+
+<section class="dashboard-grid">
+  <div class="card">
+    <div class="section-head"><div><h3>Family members and close associates</h3><p>Maintain RCA links with source evidence, confidence and review status.</p></div></div>
+    <form method="post" action="{{ url_for('add_relationship') }}" class="stack-form compact-form">
+      <label>Principal PIP
+        <select name="principal_record_id" required>
+          <option value="">Select principal PIP</option>
+          {% for record in records %}
+            <option value="{{ record.id }}">{{ record.full_name }} - {{ record.jurisdiction }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Related person/entity name<input name="related_name" required placeholder="Family member or close associate"></label>
+      <label>Relationship type<input name="relationship_type" required placeholder="Spouse, child, close associate, business partner"></label>
+      <label>Jurisdiction<input name="jurisdiction" placeholder="Botswana / Namibia"></label>
+      <label>Confidence score<input name="confidence_score" type="number" min="0" max="100" value="70"></label>
+      <label>Review status<input name="review_status" value="Candidate review"></label>
+      <label>Source name<input name="source_name" placeholder="Registry, article, public document"></label>
+      <label>Source URL<input name="source_url" placeholder="https://..."></label>
+      <label>Source excerpt<textarea name="source_excerpt" placeholder="Evidence for relationship/linkage"></textarea></label>
+      <label>Reviewer notes<textarea name="reviewer_notes" placeholder="Human review comments"></textarea></label>
+      <button type="submit">Add relationship</button>
+    </form>
+    <div class="section-head compact"><div><h3>Recent relationship records</h3></div></div>
+    <table>
+      <thead><tr><th>Principal</th><th>Related party</th><th>Type</th><th>Confidence</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for item in relationships %}
+          <tr><td>{{ item.principal.full_name if item.principal else "-" }}</td><td>{{ item.related_name }}</td><td>{{ item.relationship_type }}</td><td>{{ item.confidence_score }}%</td><td>{{ item.review_status }}</td></tr>
+        {% else %}
+          <tr><td colspan="5">No family/close-associate relationships captured yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="section-head"><div><h3>Coverage snapshot</h3><p>Botswana/Namibia records and relationship data for tender readiness.</p></div></div>
+    <div class="queue-list">
+      <a href="{{ url_for('coverage_dashboard') }}"><strong>Botswana records</strong><span>{{ coverage.botswana_total }}</span></a>
+      <a href="{{ url_for('coverage_dashboard') }}"><strong>Namibia records</strong><span>{{ coverage.namibia_total }}</span></a>
+      <a href="{{ url_for('coverage_dashboard') }}"><strong>Verified records</strong><span>{{ coverage.verified_records }}</span></a>
+      <a href="{{ url_for('coverage_dashboard') }}"><strong>RCA relationships</strong><span>{{ coverage.relationships }}</span></a>
+    </div>
+    <div class="section-head compact"><div><h3>Latest audit events</h3></div></div>
+    <table>
+      <thead><tr><th>Date</th><th>Action</th><th>Actor</th><th>Note</th></tr></thead>
+      <tbody>
+        {% for log in audit_logs %}
+          <tr><td>{{ log.created_at.strftime("%Y-%m-%d %H:%M") if log.created_at else "-" }}</td><td>{{ log.action }}</td><td>{{ log.actor or "-" }}</td><td>{{ log.note or "-" }}</td></tr>
+        {% else %}
+          <tr><td colspan="4">No audit events yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="dashboard-grid">
+  <div class="card">
+    <div class="section-head"><div><h3>Suspect records</h3><p>Candidate-review records that look like headings, menu labels, or institutions.</p></div></div>
+    <form method="post" action="{{ url_for('cleanup_non_person_records') }}" class="inline-form">
+      <button type="submit" name="action" value="mark">Mark as Not a Person</button>
+      <button type="submit" name="action" value="delete" class="secondary">Delete Suspects</button>
+    </form>
+    <table>
+      <thead><tr><th>Name</th><th>Source</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for record in suspect_records %}
+          <tr><td>{{ record.full_name }}</td><td>{{ record.source_name or "-" }}</td><td>{{ record.status }}</td></tr>
+        {% else %}
+          <tr><td colspan="3">No likely non-person candidate records found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <div class="section-head"><div><h3>Duplicate merge suggestions</h3><p>Candidate fragments that appear to match an existing confirmed profile.</p></div></div>
+    {% for suggestion in duplicate_suggestions %}
+      <form method="post" action="{{ url_for('merge_duplicate_records') }}" class="stack-form merge-box">
+        <input type="hidden" name="target_id" value="{{ suggestion.target.id }}">
+        <strong>Merge into: {{ suggestion.target.full_name }} ({{ suggestion.target.status }})</strong>
+        <table>
+          <thead><tr><th>Select</th><th>Candidate string</th><th>Score</th><th>Source</th></tr></thead>
+          <tbody>
+            {% for item in suggestion.matches %}
+              <tr><td><input type="checkbox" name="source_ids" value="{{ item.record.id }}" checked></td><td>{{ item.record.full_name }}</td><td>{{ item.score }}</td><td>{{ item.record.source_name or "-" }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <button type="submit">Merge selected into {{ suggestion.target.full_name }}</button>
+      </form>
+    {% else %}
+      <p class="hint">No duplicate candidate strings currently require merging.</p>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="dashboard-grid">
+  <div class="card">
+    <div class="section-head"><div><h3>PIP category definitions</h3><p>Classification framework used for candidate review.</p></div></div>
+    <table>
+      <thead><tr><th>Category</th><th>Indicative Coverage</th></tr></thead>
+      <tbody>{% for category, coverage in pip_definitions %}<tr><td>{{ category }}</td><td>{{ coverage }}</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  <div class="card">
+    <div class="section-head"><div><h3>Recent PDF imports</h3><p>Latest ingestion logs.</p></div></div>
+    <table>
+      <thead><tr><th>Date</th><th>PDFs</th><th>Candidates</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for log in pdf_logs %}
+          <tr><td>{{ log.created_at.strftime("%Y-%m-%d %H:%M") }}</td><td>{{ log.pdfs_processed }}/{{ log.pdfs_found }}</td><td>{{ log.candidates_created }}</td><td>{{ log.status }}</td></tr>
+        {% else %}
+          <tr><td colspan="4">No DailyNews imports yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
